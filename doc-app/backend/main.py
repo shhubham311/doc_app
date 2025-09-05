@@ -21,7 +21,7 @@ import hashlib
 import jwt
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import text
-
+from mangum import Mangum
 
 # Load environment variables from .env file
 load_dotenv()
@@ -935,6 +935,7 @@ async def get_chat_history(
         logger.error(f"Failed to retrieve chat history: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve chat history")
 
+"""
 if __name__ == "__main__":
     # Run the application
     port = int(os.getenv("PORT", 8000))
@@ -945,3 +946,5 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+    """
+handler = Mangum(app)
