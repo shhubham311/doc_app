@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/main.py"
+    }
+  ],
+  "env": {
+    "PYTHONPATH": ".",
+    "GROQ_API_KEY": "@groq_api_key",
+    "JWT_SECRET": "@jwt_secret",
+    "DATABASE_URL": "@database_url"
+  }
+}
