@@ -22,11 +22,5 @@
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ],
-  "env": {
-    "PYTHONPATH": "./backend",
-    "GROQ_API_KEY": "@groq_api_key",
-    "JWT_SECRET": "@jwt_secret",
-    "DATABASE_URL": "@database_url"
-  }
+  ]
 }
