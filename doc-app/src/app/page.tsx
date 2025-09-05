@@ -1,4 +1,4 @@
-import Image from "next/image";
+//import Image from "next/image";
 import Editor from './components/Editor';
 import ChatSidebar from './components/ChatSidebar';
 import AuthLayout from './components/AuthLayout';

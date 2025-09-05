@@ -37,13 +37,7 @@ export default function ChatSidebar() {
   const [sessionId] = useState(() => `session_${Date.now()}`);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
 
-  React.useEffect(() => {
-    if (token) {
-      checkBackendConnection();
-    }
-  }, [token]);
-
-  const checkBackendConnection = async () => {
+  const checkBackendConnection = React.useCallback(async () => {
     if (!token) {
       setConnectionStatus('disconnected');
       return;
@@ -67,7 +61,13 @@ export default function ChatSidebar() {
       console.error('Backend connection check failed:', error);
       setConnectionStatus('disconnected');
     }
-  };
+  }, [token, setConnectionStatus]);
+
+  React.useEffect(() => {
+    if (token) {
+      checkBackendConnection();
+    }
+  }, [token, checkBackendConnection]);
 
   const handleWebSearch = async (query: string) => {
     if (connectionStatus !== 'connected' || !token) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, ReactNode } from 'react'
 
 export interface SearchResult {
   title: string;
@@ -8,12 +8,27 @@ export interface SearchResult {
   snippet: string;
 }
 
+export type AgentResponse = WebSearchResponse | {
+  type: 'crawl' | 'summarize' | 'error';
+  message: string;
+  content?: string;
+}
+
 export interface WebSearchResponse {
+  type: 'search' | 'search_and_insert';
   query: string;
   results: SearchResult[];
   summary: string;
   total_results?: number;
 }
+
+declare global {
+  interface Window {
+    editorInsertContent?: (content: string) => void;
+  }
+}
+
+
 
 export interface AgentTools {
   webSearch: (query: string) => Promise<WebSearchResponse>;
@@ -23,8 +38,8 @@ export interface AgentTools {
 
 type AgentContextType = {
   performWebSearch: (query: string) => Promise<WebSearchResponse>
-  insertToEditor: (content: WebSearchResponse | string) => void
-  processAgentCommand: (command: string) => Promise<any>
+  insertToEditor: (content: AgentResponse | string) => void
+  processAgentCommand: (command: string) => Promise<AgentResponse>
   tools: AgentTools
 }
 
@@ -63,8 +78,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       const backendResult = data.result;
       
       return {
+        type: 'search',
         query: backendResult.query || query,
-        results: backendResult.results.map((result: any) => ({
+        results: backendResult.results.map((result: SearchResult) => ({
           title: result.title || 'Untitled',
           url: result.url || '#',
           snippet: result.snippet || 'No description available'
@@ -87,6 +103,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       }
       
       return {
+        type: 'search',
         query: query,
         results: [],
         summary: errorMessage,
@@ -145,7 +162,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const processAgentCommand = async (command: string): Promise<any> => {
+  const processAgentCommand = async (command: string): Promise<AgentResponse> => {
     try {
       // Parse different types of agent commands
       const lowerCommand = command.toLowerCase();
@@ -153,15 +170,14 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       if (lowerCommand.includes('search') && lowerCommand.includes('insert')) {
         // Extract search query
         const searchQuery = command.replace(/search|for|and|insert|into|editor|please/gi, '').trim();
-        const results = await performWebSearch(searchQuery);
+        const searchResults = await performWebSearch(searchQuery);
         
         // Auto-insert into editor
-        insertToEditor(results);
+        insertToEditor(searchResults);
         
         return {
-          type: 'search_and_insert',
-          results,
-          message: `Searched for "${searchQuery}" and inserted ${results.results.length} results into editor.`
+          ...searchResults,
+          type: 'search_and_insert'
         };
       }
       
@@ -189,11 +205,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       }
       
       // Default to web search
-      const results = await performWebSearch(command);
+      const searchResults = await performWebSearch(command);
       return {
-        type: 'search',
-        results,
-        message: `Found ${results.results.length} results for: ${command}`
+        ...searchResults,
+        type: 'search'
       };
       
     } catch (error) {
@@ -205,29 +220,21 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const insertToEditor = (content: WebSearchResponse | string) => {
-    console.log('Content to insert into editor:', content);
-    
-    // Dispatch a custom event that the Editor component listens for
-    const event = new CustomEvent('insertContent', { 
-      detail: { content } 
-    });
-    window.dispatchEvent(event);
-    
-    // Also try the direct method if available
-    if (typeof window !== 'undefined' && (window as any).editorInsertContent) {
+  const insertToEditor = (content: AgentResponse | string) => {
+    if (typeof window !== 'undefined' && window.editorInsertContent) {
       if (typeof content === 'string') {
-        (window as any).editorInsertContent(`<p>${content}</p>`);
-      } else {
+        window.editorInsertContent(`<p>${content}</p>`);
+      } else if ('results' in content) {
+        // This is a WebSearchResponse
         const formattedContent = content.results
-          .map(result => `<h3>${result.title}</h3><p>${result.snippet}</p><p><a href="${result.url}" target="_blank">Read more</a></p>`)
-          .join('<br/><br/>');
-        (window as any).editorInsertContent(formattedContent);
+          .map((result: SearchResult) => `<h3>${result.title}</h3><p>${result.snippet}</p><p><a href="${result.url}" target="_blank">Read more</a></p>`)
+          .join('\n\n');
+        window.editorInsertContent(formattedContent);
+      } else {
+        // This is an error, crawl, or summarize response
+        window.editorInsertContent(`<p>${content.message}</p>${content.content ? `<p>${content.content}</p>` : ''}`);
       }
-      return true;
     }
-    
-    return false;
   }
 
   // Agent tools object
