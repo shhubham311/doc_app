@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+groq
+python-dotenv
+sqlalchemy
+psycopg2-binary
+alembic
+requests
+pydantic
+aiohttp
+beautifulsoup4
+lxml
+pyjwt
+python-multipart
